@@ -1,0 +1,98 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net: Default-deny all unmapped paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidInventoryItem(data) {
+      return data.userId is string && data.userId.size() <= 128
+        && data.itemName is string && data.itemName.size() > 0 && data.itemName.size() <= 150
+        && data.quantity is number && data.quantity >= 0 && data.quantity <= 1000000
+        && data.pricePerUnit is number && data.pricePerUnit >= 0 && data.pricePerUnit <= 10000000
+        && data.totalValue is number && data.totalValue >= 0 && data.totalValue <= 1000000000
+        && (!('category' in data) || (data.category is string && data.category.size() <= 60))
+        && (!('date' in data) || (data.date is string && data.date.size() <= 30))
+        && (!('sourceInvoice' in data) || (data.sourceInvoice is string && data.sourceInvoice.size() <= 120))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidInvoice(data) {
+      return data.userId is string && data.userId.size() <= 128
+        && data.fileName is string && data.fileName.size() > 0 && data.fileName.size() <= 150
+        && data.itemsCount is number && data.itemsCount >= 0 && data.itemsCount <= 10000
+        && data.totalAmount is number && data.totalAmount >= 0 && data.totalAmount <= 100000000
+        && data.createdAt is timestamp;
+    }
+
+    // Inventory Collection
+    match /inventory/{itemId} {
+      allow get: if isSignedIn() && isValidId(itemId) && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      allow create: if isSignedIn()
+        && isValidId(itemId)
+        && incoming().userId == request.auth.uid
+        && incoming().keys().hasAll(['userId', 'itemName', 'quantity', 'pricePerUnit', 'totalValue', 'createdAt', 'updatedAt'])
+        && incoming().keys().hasOnly(['userId', 'itemName', 'quantity', 'pricePerUnit', 'totalValue', 'category', 'date', 'sourceInvoice', 'createdAt', 'updatedAt'])
+        && isValidInventoryItem(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isSignedIn()
+        && isValidId(itemId)
+        && existing().userId == request.auth.uid
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && isValidInventoryItem(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly(['itemName', 'quantity', 'pricePerUnit', 'totalValue', 'category', 'date', 'sourceInvoice', 'updatedAt']);
+
+      allow delete: if isSignedIn()
+        && isValidId(itemId)
+        && existing().userId == request.auth.uid;
+    }
+
+    // Invoices Collection
+    match /invoices/{invoiceId} {
+      allow get: if isSignedIn() && isValidId(invoiceId) && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      allow create: if isSignedIn()
+        && isValidId(invoiceId)
+        && incoming().userId == request.auth.uid
+        && incoming().keys().hasAll(['userId', 'fileName', 'itemsCount', 'totalAmount', 'createdAt'])
+        && incoming().keys().hasOnly(['userId', 'fileName', 'itemsCount', 'totalAmount', 'createdAt'])
+        && isValidInvoice(incoming())
+        && incoming().createdAt == request.time;
+
+      allow delete: if isSignedIn()
+        && isValidId(invoiceId)
+        && existing().userId == request.auth.uid;
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "entities": {
+    "InventoryItem": {
+      "title": "Inventory Item",
+      "description": "Stock item extracted from invoice or manually added by retailer",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "itemName": { "type": "string", "maxLength": 150, "minLength": 1 },
+        "quantity": { "type": "number" },
+        "pricePerUnit": { "type": "number" },
+        "totalValue": { "type": "number" },
+        "category": { "type": "string", "maxLength": 60 },
+        "date": { "type": "string", "maxLength": 30 },
+        "sourceInvoice": { "type": "string", "maxLength": 120 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "itemName", "quantity", "pricePerUnit", "totalValue", "createdAt", "updatedAt"]
+    },
+    "InvoiceRecord": {
+      "title": "Invoice Record",
+      "description": "Log of uploaded invoice bills processed by AI vision",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "fileName": { "type": "string", "maxLength": 150 },
+        "itemsCount": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "fileName", "itemsCount", "totalAmount", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/inventory/{itemId}": {
+      "schema": "InventoryItem",
+      "description": "Stores user inventory items with real-time sync and per-user isolation"
+    },
+    "/invoices/{invoiceId}": {
+      "schema": "InvoiceRecord",
+      "description": "Stores historical scanned invoice metadata per user"
+    }
+  }
+}

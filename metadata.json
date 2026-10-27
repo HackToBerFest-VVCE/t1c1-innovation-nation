@@ -1,0 +1,6 @@
+{
+  "name": "EcoRetail",
+  "description": "Smart inventory management with AI-powered invoice scanning, real-time stock tracking, and Google authentication.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
